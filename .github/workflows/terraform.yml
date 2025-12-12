@@ -1,0 +1,75 @@
+name: terraform-intersight
+
+on:
+  pull_request:
+    paths:
+      - "**/*.tf"
+      - ".github/workflows/terraform.yml"
+  push:
+    branches: [ "main" ]
+    paths:
+      - "**/*.tf"
+      - ".github/workflows/terraform.yml"
+
+permissions:
+  contents: read
+
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  TF_DIR: "."
+
+jobs:
+  plan:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.TF_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.6.6"
+
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init
+        run: terraform init -input=false
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform plan
+        env:
+          TF_VAR_intersight_api_key_id: ${{ secrets.INTERSIGHT_API_KEY_ID }}
+          TF_VAR_intersight_secret_key: ${{ secrets.INTERSIGHT_SECRET_KEY }}
+          TF_VAR_intersight_endpoint: "https://intersight.com"
+          TF_VAR_resource_group_name: "lab-automation-rg"
+        run: terraform plan -no-color
+
+  apply:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.TF_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.6.6"
+
+      - name: Terraform init
+        run: terraform init -input=false
+
+      - name: Terraform apply
+        env:
+          TF_VAR_intersight_api_key_id: ${{ secrets.INTERSIGHT_API_KEY_ID }}
+          TF_VAR_intersight_secret_key: ${{ secrets.INTERSIGHT_SECRET_KEY }}
+          TF_VAR_intersight_endpoint: "https://intersight.com"
+          TF_VAR_resource_group_name: "lab-automation-rg"
+        run: terraform apply -auto-approve -no-color
