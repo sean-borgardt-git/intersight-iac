@@ -16,3 +16,4 @@ export TF_VAR_resource_group_name="lab-automation-rg"
 terraform init
 terraform plan
 terraform apply
+# test
